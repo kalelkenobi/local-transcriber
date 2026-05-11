@@ -6,9 +6,11 @@ node_modules/
 .vscode/
 __pycache__/
 models/
+!models/silero_vad.onnx
 .opencode/
 .venv/
 recording.wav
+*.egg-info/
 
 # Yarn 3 ignores
 .pnp.*

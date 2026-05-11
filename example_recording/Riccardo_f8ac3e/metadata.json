@@ -1,0 +1,21 @@
+{
+  "identity": "Riccardo",
+  "sample_rate": 48000,
+  "channels": 1,
+  "format": "opus",
+  "bitrate": 128000,
+  "application": "\"audio\"",
+  "start_epoch": 1778528857.7341638,
+  "audio_file": "Riccardo_f8ac3e.opus",
+  "audio_sha256": "355586ed533b02f3b291d92bd4d1700e50e5d5c9809c5ce97eaa303fecdbde38",
+  "events": [
+    {
+      "type": "start_receiving",
+      "epoch": 1778528857.8994946
+    },
+    {
+      "type": "finalized",
+      "epoch": 1778528874.7580411
+    }
+  ]
+}
