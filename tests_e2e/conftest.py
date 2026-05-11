@@ -20,7 +20,7 @@ from tests_e2e.mock_asr.server import MockASRServer, start_mock_asr
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTAINERFILE = REPO_ROOT / "ContainerFile"
-EXAMPLE_RECORDING = REPO_ROOT / "example_recording"
+EXAMPLE_RECORDING = REPO_ROOT / "tests_e2e/fixtures"
 DEFAULT_IMAGE_TAG = "local-transcriber:e2e"
 
 

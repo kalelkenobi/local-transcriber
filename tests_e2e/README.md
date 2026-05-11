@@ -1,7 +1,7 @@
 # End-to-end tests
 
 These tests build (or reuse) the `local-transcriber` container image and
-run it against `example_recording/` with a mock OpenAI-compatible ASR
+run it against `tests_e2e/fixtures/` with a mock OpenAI-compatible ASR
 server running on the host. They verify the full pipeline end-to-end:
 
 - ffmpeg decode of the bundled `.opus` file,

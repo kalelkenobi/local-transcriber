@@ -1,6 +1,6 @@
 """Session manifest and per-participant metadata loaders.
 
-Session layout (matches `example_recording/`):
+Session layout:
 
     session_dir/
         manifest.json                  # session-wide info

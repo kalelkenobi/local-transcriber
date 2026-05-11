@@ -20,7 +20,7 @@ from local_transcriber.pipeline import SessionResult
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE = REPO_ROOT / "example_recording"
+EXAMPLE = REPO_ROOT / "tests_e2e/fixtures"
 
 
 def _write_session(dirpath: Path, session_id: str) -> Path:

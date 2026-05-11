@@ -1,4 +1,4 @@
-"""End-to-end smoke test: run the container against example_recording/."""
+"""End-to-end smoke test: run the container against tests_e2e/fixtures/."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def test_smoke_single_session(
     mock_asr: tuple[str, int, MockASRServer],
     tmp_path: Path,
 ) -> None:
-    """Transcribe example_recording/ through the container + mock ASR.
+    """Transcribe tests_e2e/fixtures/ through the container + mock ASR.
 
     Asserts:
       - container exits 0,
@@ -61,7 +61,7 @@ def test_smoke_single_session(
     _, port, server = mock_asr
 
     # Copy the example so the container can write transcript files into it.
-    session = tmp_path / "example_recording"
+    session = tmp_path / "tests_e2e/fixtures"
     shutil.copytree(EXAMPLE_RECORDING, session)
     # Be permissive — the container runs as root by default and writes back
     # to the host mount.
@@ -105,7 +105,7 @@ def test_smoke_single_session(
     assert starts == sorted(starts), "segments not sorted by start time"
 
     speakers = {s["speaker"] for s in data["segments"]}
-    assert speakers == {"Riccardo"}, f"unexpected speakers: {speakers}"
+    assert speakers == {"Kal"}, f"unexpected speakers: {speakers}"
 
     for seg in data["segments"]:
         assert seg["text"].startswith("mock-"), seg
@@ -114,9 +114,9 @@ def test_smoke_single_session(
 
     txt = transcript_txt.read_text()
     assert TIMESTAMP_LINE.search(txt), f"no timestamp lines in:\n{txt}"
-    assert "Riccardo" in txt
+    assert "Kal" in txt
     # Each segment in JSON should appear in TXT.
-    assert txt.count("Riccardo") == len(data["segments"])
+    assert txt.count("Kal") == len(data["segments"])
 
     assert server.call_count >= len(data["segments"]), (
         "mock ASR was called fewer times than the number of returned segments"

@@ -11,7 +11,7 @@ local (your own vLLM, mlx-whisper-server, ollama-compatible shim, etc.).
 
 ## Recording format
 
-A recording is a directory shaped like `example_recording/`:
+A recording is a directory shaped like this:
 
 ```
 my-session/
@@ -29,7 +29,7 @@ my-session/
   "room_name": "...",
   "start_epoch": 1778520398.5128,
   "end_epoch":   1778520436.8609,
-  "participants": ["Riccardo"],
+  "participants": ["Kal"],
   "format": "opus",
   "bitrate": 128000
 }
@@ -42,12 +42,12 @@ transcript is measured relative to it.
 
 ```json
 {
-  "identity": "Riccardo",
+  "identity": "Kal",
   "sample_rate": 48000,
   "channels": 1,
   "format": "opus",
   "start_epoch": 1778520398.5128,
-  "audio_file": "Riccardo_f8ac3e.opus",
+  "audio_file": "kal.opus",
   "events": [
     { "type": "start_receiving", "epoch": 1778520398.6809 },
     { "type": "finalized",       "epoch": 1778520436.8606 }
@@ -68,10 +68,10 @@ Two files are written to the session directory (or to `--output-dir`):
 ### `transcript.txt`
 
 ```
-00:00:00.17 Riccardo
+00:00:00.17 Kal
 Welcome to the session.
 
-00:00:02.40 Riccardo
+00:00:02.40 Kal
 Roll for initiative.
 
 00:00:02.55 Player1
@@ -95,7 +95,7 @@ Structured form of the same data, plus session metadata:
   "end_epoch":   1778520436.8609,
   "segments": [
     {
-      "speaker": "Riccardo",
+      "speaker": "Kal",
       "start": 0.168,
       "end":   1.842,
       "start_absolute": "00:00:00.17",

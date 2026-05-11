@@ -19,11 +19,11 @@ from local_transcriber.session import (
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXAMPLE = REPO_ROOT / "example_recording"
+EXAMPLE = REPO_ROOT / "tests_e2e/fixtures"
 
 
 class TestLoadExampleRecording(unittest.TestCase):
-    """Drive the loaders against the committed example_recording/ fixture."""
+    """Drive the loaders against the committed fixture."""
 
     def test_load_manifest_fields(self):
         manifest = load_manifest(EXAMPLE)
@@ -31,9 +31,9 @@ class TestLoadExampleRecording(unittest.TestCase):
         self.assertEqual(manifest.session_id, "2026-05-11_21-47-37")
         self.assertEqual(
             manifest.room_name,
-            "33_1xUzpG6EH3kAMjBbWfhjur1vLCGhQTW0",
+            "1xUzpG6EH3kAMjBbWfhjur1vLCGhQTW0",
         )
-        self.assertEqual(manifest.participants, ("Riccardo",))
+        self.assertEqual(manifest.participants, ("Kal",))
         self.assertEqual(manifest.format, "opus")
         self.assertAlmostEqual(manifest.start_epoch, 1778528857.7341638, places=4)
         self.assertIsNotNone(manifest.end_epoch)
@@ -42,7 +42,7 @@ class TestLoadExampleRecording(unittest.TestCase):
         manifest, participants = load_session(EXAMPLE)
         self.assertEqual(len(participants), 1)
         p = participants[0]
-        self.assertEqual(p.identity, "Riccardo")
+        self.assertEqual(p.identity, "Kal")
         self.assertTrue(p.audio_path.exists())
         self.assertEqual(p.audio_path.suffix, ".opus")
         self.assertEqual(p.audio_format, "opus")
@@ -181,7 +181,7 @@ class TestIterSessions(unittest.TestCase):
         self.assertEqual(sessions, [EXAMPLE])
 
     def test_parent_dir_without_recursive_yields_nothing(self):
-        # example_recording's parent has no manifest.json — without recursive
+        # tests_e2e/fixtures's parent has no manifest.json — without recursive
         # the iterator yields nothing.
         sessions = list(iter_sessions(EXAMPLE.parent, recursive=False))
         self.assertNotIn(EXAMPLE.parent, sessions)
