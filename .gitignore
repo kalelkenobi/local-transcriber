@@ -1,0 +1,20 @@
+dist/
+node_modules/
+*.log
+.DS_Store
+.eslintcache
+.vscode/
+__pycache__/
+models/
+.opencode/
+.venv/
+recording.wav
+
+# Yarn 3 ignores
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
