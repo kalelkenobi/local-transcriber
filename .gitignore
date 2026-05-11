@@ -5,8 +5,6 @@ node_modules/
 .eslintcache
 .vscode/
 __pycache__/
-models/
-!models/silero_vad.onnx
 .opencode/
 .venv/
 recording.wav
