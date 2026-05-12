@@ -71,17 +71,19 @@ local-transcriber ./recordings/session-1 \
   --model whisper-1
 ```
 
-### Containerized run
+### Containerized run (Apple container)
 
 ```bash
-docker run --rm \
-  -e TRANSCRIBE_URL=http://host.docker.internal:8000 \
-  -e TRANSCRIBE_MODEL=openai/whisper-large-v3 \
-  -v "$PWD/recordings:/in" \
-  -v "$PWD/transcripts:/out" \
-  kalelkenobi/local-transcriber:latest \
-  /in --recursive --output-dir /out
+scripts/run.sh --url http://192.168.64.1:8000 \
+  --model whisper-large-v3-mlx \
+  --recursive "$PWD/recordings"
 ```
+
+The `scripts/run.sh` wrapper pulls the latest image from Docker Hub and
+launches it via Apple's native `container` CLI. Accepts the same flags as
+`docker run` examples: `--url`, `--model`, `--api-key`, `--recursive`,
+`--tag`, `--language`, `--log-level`, `--vad-threshold`, `--timeout`,
+`--concurrency`.
 
 ### Tighter VAD for quiet recordings
 

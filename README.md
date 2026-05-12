@@ -127,6 +127,30 @@ docker run --rm \
   /in --recursive
 ```
 
+## Quick start (Apple container)
+
+Use the convenience script to pull the image from Docker Hub and run with
+Apple's native `container` CLI:
+
+```bash
+scripts/run.sh --url http://192.168.64.1:8000 \
+  --model whisper-large-v3-mlx \
+  /path/to/recordings/my-session
+```
+
+Recursive mode:
+
+```bash
+scripts/run.sh --url http://192.168.64.1:8000 \
+  --model whisper-large-v3-mlx --recursive \
+  /path/to/recordings
+```
+
+The script passes through most CLI flags (`--api-key`, `--language`,
+`--log-level`, `--vad-threshold`, `--timeout`, `--concurrency`, `--tag`).
+Omit `--url` / `--model` when `TRANSCRIBE_URL` / `TRANSCRIBE_MODEL` are
+already set in the environment.
+
 ## CLI
 
 | Flag / arg               | Env var                    | Default                            |
