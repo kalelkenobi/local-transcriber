@@ -3,7 +3,8 @@
 Detects an available container runtime (`container`/`docker`/`podman`),
 builds or reuses the `local-transcriber` image, and starts a mock ASR
 server that the container can reach over the host network. Skips the
-whole suite when no runtime is available.
+whole suite when no runtime is available. Cleans up containers and the
+built image after the test session.
 """
 
 from __future__ import annotations
@@ -35,6 +36,28 @@ def _detect_runtime() -> str | None:
     return None
 
 
+def _remove_containers(runtime: str, prefix: str = "lt-e2e-") -> None:
+    """Force-remove all containers whose name starts with *prefix*."""
+    if runtime in ("docker", "podman"):
+        ps_result = subprocess.run(
+            [runtime, "ps", "-a", "--format", "{{.Names}}"],
+            capture_output=True, text=True,
+        )
+    else:
+        ps_result = subprocess.run(
+            [runtime, "list", "--all", "--format", "{{.Name}}"],
+            capture_output=True, text=True,
+        )
+    if ps_result.returncode != 0:
+        return
+    containers = [
+        n.strip() for n in ps_result.stdout.splitlines()
+        if n.strip().startswith(prefix)
+    ]
+    for c in containers:
+        subprocess.run([runtime, "rm", "-f", c], capture_output=True)
+
+
 @pytest.fixture(scope="session")
 def runtime() -> str:
     rt = _detect_runtime()
@@ -44,11 +67,17 @@ def runtime() -> str:
 
 
 @pytest.fixture(scope="session")
-def container_image(runtime: str) -> str:
-    """Reuse $LOCAL_TRANSCRIBER_IMAGE if set, else build from ContainerFile."""
+def container_image(runtime: str) -> Iterator[str]:
+    """Reuse $LOCAL_TRANSCRIBER_IMAGE if set, else build from ContainerFile.
+
+    Cleans up any leftover e2e containers and the built image (when the
+    fixture built it) during session teardown.
+    """
     prebuilt = os.environ.get("LOCAL_TRANSCRIBER_IMAGE")
     if prebuilt:
-        return prebuilt
+        yield prebuilt
+        _remove_containers(runtime)
+        return
 
     image = DEFAULT_IMAGE_TAG
     cmd = [
@@ -65,7 +94,11 @@ def container_image(runtime: str) -> str:
             f"STDOUT:\n{result.stdout}\n"
             f"STDERR:\n{result.stderr}"
         )
-    return image
+    try:
+        yield image
+    finally:
+        _remove_containers(runtime)
+        subprocess.run([runtime, "rmi", "-f", image], capture_output=True, timeout=30)
 
 
 @pytest.fixture

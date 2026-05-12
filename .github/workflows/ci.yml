@@ -76,6 +76,12 @@ jobs:
         env:
           LOCAL_TRANSCRIBER_IMAGE: local-transcriber:test
 
+      - name: Clean up e2e artifacts
+        if: always()
+        run: |
+          docker ps -a --format '{{.Names}}' 2>/dev/null | grep '^lt-e2e-' | xargs -r docker rm -f || true
+          docker rmi -f local-transcriber:test || true
+
   publish:
     name: Build and push image
     needs: [unit, e2e]

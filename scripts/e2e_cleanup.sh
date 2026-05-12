@@ -6,8 +6,9 @@
 #   2. Apple `container` CLI
 #   3. `docker`
 #   4. `podman`
-# Then removes any containers and (optionally) images whose name starts
-# with the `lt-e2e-` prefix.
+# Then removes any containers and images whose name starts with the
+# `lt-e2e-` prefix, plus the standard e2e/CI/dev image tags
+# (local-transcriber:e2e, :test, :dev).
 
 set -eu
 
@@ -54,15 +55,15 @@ else
     echo "No matching containers to remove."
 fi
 
-# List + remove matching images.
+# List + remove matching images (prefix match + standard e2e tags).
 case "$RUNTIME" in
     container)
         images="$($RUNTIME images list --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
-            | grep "^$PREFIX" || true)"
+            | grep -E "^($PREFIX|local-transcriber:(e2e|test|dev)\$)" || true)"
         ;;
     docker|podman)
         images="$($RUNTIME images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null \
-            | grep "^$PREFIX" || true)"
+            | grep -E "^($PREFIX|local-transcriber:(e2e|test|dev)\$)" || true)"
         ;;
 esac
 

@@ -43,16 +43,25 @@ LOCAL_TRANSCRIBER_IMAGE=local-transcriber:dev .venv/bin/pytest tests_e2e -q
 
 ## Cleanup
 
-Test containers are named with the prefix `lt-e2e-` and use `--rm`, so
-they normally clean themselves up. To sweep any stranded artifacts
-(stopped containers, dangling images):
+The test suite automatically cleans up after itself during session
+teardown:
+
+- `conftest.py` removes any `lt-e2e-` containers and the built
+  `local-transcriber:e2e` image (unless `LOCAL_TRANSCRIBER_IMAGE` was
+  provided, in which case the prebuilt image is left alone).
+- The CI workflow (`ci.yml`) runs an explicit cleanup step (`if: always()`)
+  that force-removes `lt-e2e-*` containers and the `local-transcriber:test`
+  image built by the e2e job.
+
+To sweep any stranded artifacts manually (e.g. after a test interruption):
 
 ```bash
 scripts/e2e_cleanup.sh
 ```
 
-The cleanup script honors `E2E_RUNTIME` and the `lt-e2e-` prefix
-(override with `E2E_PREFIX=...`).
+The cleanup script honors `E2E_RUNTIME` and matches both the `lt-e2e-`
+prefix (override with `E2E_PREFIX=...`) and the standard
+`local-transcriber:(e2e|test|dev)` image tags.
 
 ## What the mock ASR server returns
 
