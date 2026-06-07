@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run local-transcriber via Apple container, pulling the image from Docker Hub.
+# Run local-transcriber via Apple container.
 #
 # Usage:
 #   scripts/run.sh --url URL --model MODEL PATH
@@ -19,8 +19,7 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [OPTIONS] PATH
 
-Run local-transcriber via Apple container, pulling the image from
-Docker Hub (kalelkenobi/local-transcriber).
+Run local-transcriber via Apple container.
 
 Required:
   --url URL         Base URL of an OpenAI-compatible ASR server
@@ -34,7 +33,7 @@ Options:
   --recursive, -r      Process every child dir containing manifest.json.
   --language LANG      Language code (default: en).
   --log-level LVL      Log level: DEBUG|INFO|WARNING|ERROR (default: INFO).
-  --vad-threshold N    VAD threshold (default: 0.5).
+  --vad-threshold N    VAD threshold (default: 0.3).
   --timeout SEC        Per-segment HTTP timeout in seconds (default: 300).
   --concurrency N      Max parallel ASR requests (default: 4).
   --help, -h           Show this help and exit.
@@ -59,9 +58,9 @@ MODEL="${TRANSCRIBE_MODEL:-}"
 API_KEY="${TRANSCRIBE_API_KEY:-}"
 
 RECURSIVE=""
-LANGUAGE="en"
+LANGUAGE="it"
 LOG_LEVEL="INFO"
-VAD_THRESHOLD=""
+VAD_THRESHOLD="0.2"
 TIMEOUT=""
 CONCURRENCY=""
 
@@ -152,9 +151,6 @@ if [ -n "$CONCURRENCY" ]; then
 fi
 
 # ── run ────────────────────────────────────────────────────────────────
-
-echo "Pulling $IMAGE ..."
-container pull "$IMAGE"
 
 echo "Running: container run --rm -v $PATH_ABS:$CONTAINER_MOUNT [env] $IMAGE $CLI_ARGS"
 container run --rm \

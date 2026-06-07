@@ -129,7 +129,7 @@ docker run --rm \
 
 ## Quick start (Apple container)
 
-Use the convenience script to pull the image from Docker Hub and run with
+Use the convenience script to run the container with
 Apple's native `container` CLI:
 
 ```bash

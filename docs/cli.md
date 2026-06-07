@@ -79,8 +79,7 @@ scripts/run.sh --url http://192.168.64.1:8000 \
   --recursive "$PWD/recordings"
 ```
 
-The `scripts/run.sh` wrapper pulls the latest image from Docker Hub and
-launches it via Apple's native `container` CLI. Accepts the same flags as
+The `scripts/run.sh` wrapper launches the container via Apple's native `container` CLI. Accepts the same flags as
 `docker run` examples: `--url`, `--model`, `--api-key`, `--recursive`,
 `--tag`, `--language`, `--log-level`, `--vad-threshold`, `--timeout`,
 `--concurrency`.
