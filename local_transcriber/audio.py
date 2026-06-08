@@ -34,6 +34,7 @@ def decode_to_pcm16_mono(
     cmd = [
         "ffmpeg",
         "-hide_banner",
+        "-nostdin",
         "-loglevel", "error",
         "-i", str(audio_path),
         "-ac", "1",
@@ -50,6 +51,81 @@ def decode_to_pcm16_mono(
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
         raise AudioDecodeError(
             f"ffmpeg failed for {audio_path.name} "
+            f"(exit {result.returncode}): {stderr}"
+        )
+    return result.stdout, target_sr
+
+
+def probe_audio_duration(audio_path: Path) -> float:
+    """Return audio duration in seconds using ffprobe without decoding."""
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        str(audio_path),
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, check=False)
+    except FileNotFoundError as exc:
+        raise AudioDecodeError("ffprobe not found on PATH") from exc
+
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
+        raise AudioDecodeError(
+            f"ffprobe failed for {audio_path.name} "
+            f"(exit {result.returncode}): {stderr}"
+        )
+
+    raw = result.stdout.decode("utf-8", errors="replace").strip()
+    try:
+        duration = float(raw)
+    except ValueError as exc:
+        raise AudioDecodeError(
+            f"ffprobe returned invalid duration for {audio_path.name}: {raw!r}"
+        ) from exc
+    if duration < 0:
+        raise AudioDecodeError(
+            f"ffprobe returned negative duration for {audio_path.name}: {duration}"
+        )
+    return duration
+
+
+def decode_range_to_pcm16_mono(
+    audio_path: Path,
+    start_s: float,
+    duration_s: float,
+    target_sr: int = DEFAULT_SAMPLE_RATE,
+) -> tuple[bytes, int]:
+    """Decode a time range to 16-bit mono PCM at target_sr."""
+    if start_s < 0:
+        raise ValueError("start_s must be non-negative")
+    if duration_s <= 0:
+        raise ValueError("duration_s must be positive")
+
+    cmd = [
+        "ffmpeg",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel", "error",
+        "-ss", f"{start_s:.3f}",
+        "-t", f"{duration_s:.3f}",
+        "-i", str(audio_path),
+        "-ac", "1",
+        "-ar", str(target_sr),
+        "-f", "s16le",
+        "-",
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, check=False)
+    except FileNotFoundError as exc:
+        raise AudioDecodeError("ffmpeg not found on PATH") from exc
+
+    if result.returncode != 0:
+        stderr = result.stderr.decode("utf-8", errors="replace").strip()
+        raise AudioDecodeError(
+            f"ffmpeg failed for {audio_path.name} range "
+            f"{start_s:.3f}-{start_s + duration_s:.3f}s "
             f"(exit {result.returncode}): {stderr}"
         )
     return result.stdout, target_sr

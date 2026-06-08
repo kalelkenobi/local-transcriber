@@ -82,7 +82,18 @@ scripts/run.sh --url http://192.168.64.1:8000 \
 The `scripts/run.sh` wrapper launches the container via Apple's native `container` CLI. Accepts the same flags as
 `docker run` examples: `--url`, `--model`, `--api-key`, `--recursive`,
 `--tag`, `--language`, `--log-level`, `--vad-threshold`, `--timeout`,
-`--concurrency`.
+`--concurrency`, `--memory`.
+
+### Higher container memory
+
+For long recordings, `--memory` passes through to Apple `container run`:
+
+```bash
+scripts/run.sh --memory 4G \
+  --url http://192.168.64.1:8500 \
+  --model cohere-transcribe-03-2026-mlx-8bit \
+  /path/to/session
+```
 
 ### Tighter VAD for quiet recordings
 

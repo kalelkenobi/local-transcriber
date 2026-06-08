@@ -36,6 +36,7 @@ Options:
   --vad-threshold N    VAD threshold (default: 0.3).
   --timeout SEC        Per-segment HTTP timeout in seconds (default: 300).
   --concurrency N      Max parallel ASR requests (default: 4).
+  --memory N           Container max memory in GB (default: 2).
   --help, -h           Show this help and exit.
 
 Examples:
@@ -63,6 +64,7 @@ LOG_LEVEL="INFO"
 VAD_THRESHOLD="0.2"
 TIMEOUT=""
 CONCURRENCY=""
+MEMORY="2"
 
 # ── parse flags ────────────────────────────────────────────────────────
 
@@ -77,6 +79,7 @@ while [ $# -gt 0 ]; do
         --vad-threshold) VAD_THRESHOLD="$2"; shift 2 ;;
         --timeout)   TIMEOUT="$2"; shift 2 ;;
         --concurrency) CONCURRENCY="$2"; shift 2 ;;
+        --memory) MEMORY="$2"; shift 2 ;;
         -r|--recursive) RECURSIVE="--recursive"; shift ;;
         -h|--help)   usage ;;
         --) shift; break ;;
@@ -152,8 +155,14 @@ fi
 
 # ── run ────────────────────────────────────────────────────────────────
 
-echo "Running: container run --rm -v $PATH_ABS:$CONTAINER_MOUNT [env] $IMAGE $CLI_ARGS"
+RUNTIME_ARGS=""
+if [ -n "$MEMORY" ]; then
+    RUNTIME_ARGS="$RUNTIME_ARGS --memory $MEMORY"
+fi
+
+echo "Running: container run --rm $RUNTIME_ARGS -v $PATH_ABS:$CONTAINER_MOUNT [env] $IMAGE $CLI_ARGS"
 container run --rm \
+    $RUNTIME_ARGS \
     -v "$PATH_ABS:$CONTAINER_MOUNT" \
     "$@" \
     "$IMAGE" \

@@ -17,6 +17,35 @@ from local_transcriber import pipeline as pipeline_mod
 from local_transcriber.pipeline import SessionResult, transcribe_session
 
 
+class _EventRecordingBackend:
+    """Records call events for ordering assertions."""
+
+    def __init__(self, events: list[str]):
+        self.events = events
+        self.model = "fake-model"
+
+    async def transcribe(self, wav_bytes: bytes, language: str) -> str:
+        self.events.append("asr")
+        return "text"
+
+    async def close(self) -> None:
+        pass
+
+
+class _SequenceVAD:
+    """Returns a different segment list for each call."""
+
+    def __init__(self, responses: list[list[tuple[float, float]]]):
+        self._responses = list(responses)
+        self.calls = 0
+
+    def iter_speech_segments(self, pcm: bytes) -> list[tuple[float, float]]:
+        self.calls += 1
+        if self._responses:
+            return self._responses.pop(0)
+        return []
+
+
 def _build_session(
     root: Path,
     *,
@@ -234,6 +263,92 @@ class TestTranscribeSession(unittest.IsolatedAsyncioTestCase):
             self.assertTrue((outdir / "transcript.txt").exists())
             # session dir must be untouched
             self.assertFalse((session / "transcript.json").exists())
+
+    async def test_asr_runs_before_next_participant_decode(self):
+        events: list[str] = []
+
+        def fake_decode(path):
+            events.append(f"decode:{path.name}")
+            return b"\x00" * 32000, 16000
+
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[
+                    ("Alice", 1000.0, None),
+                    ("Bob", 1005.0, None),
+                ],
+            )
+            backend = _EventRecordingBackend(events)
+            vad = FakeVAD([(0.0, 1.0)])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                side_effect=fake_decode,
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                )
+
+        self.assertTrue(result.ok)
+        self.assertLess(
+            events.index("asr"),
+            events.index("decode:Bob_aaaa.opus"),
+            f"ASR should run before second participant decode, got {events}",
+        )
+
+    async def test_participant_no_speech_skipped_later_succeeds(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[
+                    ("Alice", 1000.0, None),
+                    ("Bob", 1005.0, None),
+                ],
+            )
+            backend = FakeBackend()
+            vad = _SequenceVAD([[], [(0.0, 1.0)]])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                return_value=(b"\x00" * 32000, 16000),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                )
+
+            self.assertTrue(result.ok, msg=f"err={result.error}")
+            self.assertEqual(result.num_segments, 1)
+            self.assertEqual(len(backend.calls), 1)
+            data = json.loads((session / "transcript.json").read_text())
+            self.assertEqual(data["segments"][0]["speaker"], "Bob")
+
+    async def test_preparation_failure_fails_session(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[("Alice", 1000.0, None)],
+            )
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                side_effect=RuntimeError("decode crash"),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=FakeBackend(),
+                    vad=FakeVAD([]),
+                    language="en",
+                )
+
+            self.assertFalse(result.ok)
+            self.assertIn("Alice", result.error or "")
 
 
 if __name__ == "__main__":

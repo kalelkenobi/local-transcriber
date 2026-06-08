@@ -147,8 +147,8 @@ scripts/run.sh --url http://192.168.64.1:8000 \
 ```
 
 The script passes through most CLI flags (`--api-key`, `--language`,
-`--log-level`, `--vad-threshold`, `--timeout`, `--concurrency`, `--tag`).
-Omit `--url` / `--model` when `TRANSCRIBE_URL` / `TRANSCRIBE_MODEL` are
+`--log-level`, `--vad-threshold`, `--timeout`, `--concurrency`, `--tag`,
+`--memory`). Omit `--url` / `--model` when `TRANSCRIBE_URL` / `TRANSCRIBE_MODEL` are
 already set in the environment.
 
 ## CLI

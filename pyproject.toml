@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "local-transcriber"
-version = "0.3.0"
+version = "0.4.0"
 description = "CLI that transcribes multi-participant audio recordings via an external OpenAI-compatible ASR API"
 requires-python = ">=3.13"
 dependencies = [

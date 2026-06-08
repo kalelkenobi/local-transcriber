@@ -68,6 +68,13 @@ class RemoteASRBackend:
 
     async def transcribe(self, wav_bytes: bytes, language: str) -> str:
         """POST a WAV segment and return the transcribed text (may be '')."""
+        logger.debug(
+            "ASR request: url=%s model=%s language=%s bytes=%d",
+            self.url,
+            self._model,
+            language,
+            len(wav_bytes),
+        )
         files = {"file": ("segment.wav", wav_bytes, "audio/wav")}
         data = {"model": self._model, "language": language}
 
@@ -84,7 +91,13 @@ class RemoteASRBackend:
             else:
                 if response.status_code < 400:
                     payload = response.json()
-                    return str(payload.get("text", "")).strip()
+                    text = str(payload.get("text", "")).strip()
+                    logger.debug(
+                        "ASR response: status=%d text_chars=%d",
+                        response.status_code,
+                        len(text),
+                    )
+                    return text
                 if 500 <= response.status_code < 600:
                     last_error = ASRRequestError(
                         f"ASR server returned {response.status_code}: "

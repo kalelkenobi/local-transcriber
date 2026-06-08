@@ -141,12 +141,20 @@ near-sharing) a timestamp.
 
 ## Concurrency Model
 
-Within a session, decode + VAD are sequential per participant (they are
-CPU-bound and not the bottleneck). All ASR calls across all participants
-run through a single `asyncio.Semaphore(concurrency)` — by default four
-in-flight requests. Across sessions (when `--recursive`), sessions are
-processed sequentially so that the ASR server is never hit with more than
-one session's worth of concurrent requests.
+Decode + VAD are sequential per participant. Pending WAV bytes are scoped
+to one participant — each participant is decoded, VAD-filtered, and sent to
+ASR before the next participant is processed. Within a single participant,
+ASR calls run through `asyncio.Semaphore(concurrency)` (default: four
+in-flight requests). Final `TranscriptSegment` objects are collected for
+the whole session, then sorted and written at the end.
+
+Across sessions (when `--recursive`), sessions are processed sequentially so
+that the ASR server is never hit with more than one session's worth of
+concurrent requests.
+
+One full participant track is still decoded at a time. Extremely long
+single-participant tracks may still need a higher container memory limit
+(`scripts/run.sh --memory 4G`).
 
 ## Configuration
 

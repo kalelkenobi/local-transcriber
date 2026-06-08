@@ -92,12 +92,12 @@ async def transcribe_session(
             error="no participants",
         )
 
-    pending: list[_PendingSegment] = []
+    transcribed: list[TranscriptSegment] = []
+    prepared_any = False
+
     for participant in participants:
         try:
-            pending.extend(
-                _prepare_participant_segments(manifest, participant, vad)
-            )
+            pending = _prepare_participant_segments(manifest, participant, vad)
         except Exception as exc:
             logger.exception(
                 "Failed to prepare segments for %s in %s",
@@ -113,7 +113,27 @@ async def transcribe_session(
                 error=f"{participant.identity}: {exc}",
             )
 
-    if not pending:
+        if not pending:
+            continue
+
+        prepared_any = True
+        logger.info(
+            "Transcribing %d speech segments for %s",
+            len(pending),
+            participant.identity,
+        )
+        participant_transcribed = await _run_transcriptions(
+            pending, backend, language, concurrency
+        )
+        logger.info(
+            "Transcribed %d/%d segments for %s",
+            len(participant_transcribed),
+            len(pending),
+            participant.identity,
+        )
+        transcribed.extend(participant_transcribed)
+
+    if not prepared_any:
         logger.info("No speech detected in session %s", manifest.session_id)
         return SessionResult(
             session_id=manifest.session_id,
@@ -123,10 +143,6 @@ async def transcribe_session(
             output_dir=out_dir,
             error="no speech detected",
         )
-
-    transcribed = await _run_transcriptions(
-        pending, backend, language, concurrency
-    )
 
     if not transcribed:
         logger.info("No transcribed text for session %s", manifest.session_id)
@@ -179,8 +195,21 @@ def _prepare_participant_segments(
     if not pcm:
         logger.warning("Empty PCM after decode for %s", participant.identity)
         return []
+    pcm_duration = len(pcm) / (sr * 2)
+    logger.info(
+        "Decoded %s: %.1fs, %.1f MiB PCM",
+        participant.identity,
+        pcm_duration,
+        len(pcm) / 1024 / 1024,
+    )
 
+    logger.debug("Running VAD for %s", participant.identity)
     speech = vad.iter_speech_segments(pcm)
+    logger.info(
+        "VAD found %d speech segments for %s",
+        len(speech),
+        participant.identity,
+    )
     if not speech:
         logger.info("No speech detected for %s", participant.identity)
         return []
@@ -219,12 +248,20 @@ async def _run_transcriptions(
         async with semaphore:
             try:
                 text = await backend.transcribe(seg.wav_bytes, language)
-            except Exception:
-                logger.exception(
-                    "Failed to transcribe %s [%.2f-%.2f]",
+            except Exception as exc:
+                logger.error(
+                    "Failed to transcribe %s [%.2f-%.2f]: %s",
                     seg.speaker,
                     seg.start_abs,
                     seg.end_abs,
+                    exc,
+                )
+                logger.debug(
+                    "ASR traceback for %s [%.2f-%.2f]",
+                    seg.speaker,
+                    seg.start_abs,
+                    seg.end_abs,
+                    exc_info=True,
                 )
                 return None
         if not text:
