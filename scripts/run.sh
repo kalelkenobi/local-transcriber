@@ -36,7 +36,7 @@ Options:
   --vad-threshold N    VAD threshold (default: 0.3).
   --timeout SEC        Per-segment HTTP timeout in seconds (default: 300).
   --concurrency N      Max parallel ASR requests (default: 4).
-  --memory N           Container max memory in GB (default: 2).
+  --memory N           Container max memory in GB (default: 3G).
   --help, -h           Show this help and exit.
 
 Examples:
@@ -64,7 +64,7 @@ LOG_LEVEL="INFO"
 VAD_THRESHOLD="0.2"
 TIMEOUT=""
 CONCURRENCY=""
-MEMORY="2"
+MEMORY="3G"
 
 # ── parse flags ────────────────────────────────────────────────────────
 
