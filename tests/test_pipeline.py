@@ -149,8 +149,9 @@ class TestTranscribeSession(unittest.IsolatedAsyncioTestCase):
                 )
 
             self.assertTrue(result.ok, msg=f"err={result.error}")
-            # 2 participants * 2 segments = 4 segments
-            self.assertEqual(result.num_segments, 4)
+            # 2 participants * 2 VAD segments = 4 ASR calls
+            # Post-merge, each participant's 2 consecutive blocks → 1
+            self.assertEqual(result.num_segments, 2)
             self.assertEqual(result.num_speakers, 2)
             self.assertEqual(len(backend.calls), 4)
             self.assertEqual(vad.calls, 2)
@@ -160,7 +161,7 @@ class TestTranscribeSession(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(tjson.exists())
             self.assertTrue(ttxt.exists())
             data = json.loads(tjson.read_text())
-            self.assertEqual(len(data["segments"]), 4)
+            self.assertEqual(len(data["segments"]), 2)
             # Segments must be sorted by start time
             starts = [s["start"] for s in data["segments"]]
             self.assertEqual(starts, sorted(starts))
@@ -349,6 +350,113 @@ class TestTranscribeSession(unittest.IsolatedAsyncioTestCase):
 
             self.assertFalse(result.ok)
             self.assertIn("Alice", result.error or "")
+
+    async def test_merges_consecutive_same_speaker(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[("Alice", 1000.0, None)],
+            )
+            backend = FakeBackend()
+            vad = FakeVAD([(0.0, 1.0), (2.0, 3.0), (4.0, 5.0)])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                return_value=(b"\x00" * 32000, 16000),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.num_segments, 1)
+            data = json.loads((session / "transcript.json").read_text())
+            self.assertEqual(len(data["segments"]), 1)
+            self.assertEqual(
+                data["segments"][0]["text"],
+                "segment-0 segment-1 segment-2",
+            )
+
+    async def test_no_merge_when_other_speaker_interleaves(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[
+                    ("Alice", 1000.0, None),
+                    ("Bob", 1001.5, None),
+                ],
+            )
+            backend = FakeBackend()
+            vad = FakeVAD([(0.0, 1.0), (3.0, 4.0)])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                return_value=(b"\x00" * 32000, 16000),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                )
+            self.assertTrue(result.ok)
+            # Timeline: Alice 0.0, Bob 1.5, Alice 3.0, Bob 4.5
+            # Sort interleaves speakers → no merge possible.
+            self.assertEqual(result.num_segments, 4)
+
+    async def test_merge_can_be_disabled(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[("Alice", 1000.0, None)],
+            )
+            backend = FakeBackend()
+            vad = FakeVAD([(0.0, 1.0), (2.0, 3.0), (4.0, 5.0)])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                return_value=(b"\x00" * 32000, 16000),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                    merge_same_speaker=False,
+                )
+            self.assertTrue(result.ok)
+            self.assertEqual(result.num_segments, 3)
+
+    async def test_sort_key_uses_start_end_speaker(self):
+        with tempfile.TemporaryDirectory() as td:
+            session = _build_session(
+                Path(td),
+                participants=[
+                    ("Alice", 1000.0, None),
+                    ("Bob", 1000.0, None),
+                ],
+            )
+            backend = FakeBackend()
+            # Alice's segment is shorter than Bob's, same start.
+            vad = _SequenceVAD([[(0.0, 1.0)], [(0.0, 2.0)]])
+            with patch.object(
+                pipeline_mod,
+                "decode_to_pcm16_mono",
+                return_value=(b"\x00" * 32000, 16000),
+            ):
+                result = await transcribe_session(
+                    session,
+                    backend=backend,
+                    vad=vad,
+                    language="en",
+                )
+            self.assertTrue(result.ok)
+            data = json.loads((session / "transcript.json").read_text())
+            speakers = [s["speaker"] for s in data["segments"]]
+            # (start, end, speaker): Alice (0, 1) before Bob (0, 2).
+            self.assertEqual(speakers, ["Alice", "Bob"])
 
 
 if __name__ == "__main__":

@@ -31,6 +31,49 @@ def format_timestamp(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d}.{cs:02d}"
 
 
+def _join_text(a: str, b: str) -> str:
+    a_stripped = a.strip()
+    b_stripped = b.strip()
+    if not a_stripped:
+        return b_stripped
+    if not b_stripped:
+        return a_stripped
+    return f"{a_stripped} {b_stripped}"
+
+
+def merge_same_speaker_segments(
+    segments: list[TranscriptSegment],
+) -> list[TranscriptSegment]:
+    """Collapse runs of consecutive same-speaker segments into one block.
+
+    Operates on globally-sorted segments. A run ends as soon as a
+    segment from a different speaker appears in the sorted order, so
+    brief interjections by another speaker are preserved. Whitespace in
+    merged text is normalized: each part is stripped and the parts are
+    joined with a single space; empty parts are dropped.
+
+    Returns a new list; the input list is not mutated.
+    """
+    if not segments:
+        return []
+
+    merged: list[TranscriptSegment] = []
+    current = segments[0]
+    for seg in segments[1:]:
+        if seg.speaker == current.speaker:
+            current = TranscriptSegment(
+                speaker=current.speaker,
+                start=current.start,
+                end=max(current.end, seg.end),
+                text=_join_text(current.text, seg.text),
+            )
+        else:
+            merged.append(current)
+            current = seg
+    merged.append(current)
+    return merged
+
+
 def write_transcript_json(
     path: Path,
     manifest: Manifest,

@@ -23,6 +23,8 @@ directories) and a set of flags described below.
 | `--vad-threshold`       |       | `TRANSCRIBE_VAD_THRESHOLD` | `0.5`                             | Speech probability threshold (0.0–1.0). Lower = more sensitive. |
 | `--vad-min-speech-ms`   |       |                            | `250`                             | Minimum continuous speech duration to open a segment. |
 | `--vad-min-silence-ms`  |       |                            | `500`                             | Minimum continuous silence duration to close a segment. |
+| `--max-segment-s`       |       | `TRANSCRIBE_MAX_SEGMENT_S`     | `60.0`                            | Hard cap on a single ASR request length in seconds. Long speech runs are split at the lowest VAD-probability frame in the last 5 s before the cap. |
+| `--merge-same-speaker / --no-merge-same-speaker` |  | `TRANSCRIBE_MERGE_SAME_SPEAKER` | `--merge-same-speaker`            | Collapse consecutive same-speaker segments into one block (default). Disable to keep one block per VAD segment. |
 | `--concurrency`         |       |                            | `4`                               | Max in-flight ASR requests per session. |
 | `--timeout`             |       |                            | `300.0`                           | Per-request HTTP timeout in seconds. |
 | `--log-level`           |       | `LOG_LEVEL`                | `INFO`                            | Python logging level. |
@@ -119,6 +121,10 @@ For each session, two files are written:
   HH:MM:SS.ss <Speaker>
   <text>
   ```
+
+By default, runs of consecutive same-speaker segments are merged into a
+single block; the merged text is the per-segment ASR results joined
+with a single space. Pass `--no-merge-same-speaker` to disable this.
 
 Times are in seconds relative to `manifest.start_epoch`. Overlapping
 speech from multiple speakers appears as adjacent blocks with the same

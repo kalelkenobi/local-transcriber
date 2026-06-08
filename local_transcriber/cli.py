@@ -80,6 +80,28 @@ def _resolve_silero_path(explicit: str | None) -> Path:
 )
 @click.option("--vad-min-speech-ms", type=int, default=250, show_default=True)
 @click.option("--vad-min-silence-ms", type=int, default=500, show_default=True)
+@click.option(
+    "--max-segment-s",
+    type=float,
+    default=60.0,
+    show_default=True,
+    envvar="TRANSCRIBE_MAX_SEGMENT_S",
+    help=(
+        "Maximum length of a single ASR request, in seconds. Long "
+        "speech runs are split at the lowest VAD-probability frame in "
+        "the last 5 s before the cap."
+    ),
+)
+@click.option(
+    "--merge-same-speaker/--no-merge-same-speaker",
+    default=True,
+    show_default=True,
+    envvar="TRANSCRIBE_MERGE_SAME_SPEAKER",
+    help=(
+        "Collapse consecutive same-speaker segments into one block "
+        "(default). Disable to keep one block per VAD segment."
+    ),
+)
 @click.option("--concurrency", type=int, default=4, show_default=True)
 @click.option("--timeout", type=float, default=300.0, show_default=True)
 @click.option(
@@ -105,6 +127,8 @@ def main(
     vad_threshold: float,
     vad_min_speech_ms: int,
     vad_min_silence_ms: int,
+    max_segment_s: float,
+    merge_same_speaker: bool,
     concurrency: int,
     timeout: float,
     log_level: str,
@@ -139,6 +163,7 @@ def main(
             threshold=vad_threshold,
             min_speech_ms=vad_min_speech_ms,
             min_silence_ms=vad_min_silence_ms,
+            max_speech_s=max_segment_s,
         )
     except FileNotFoundError as exc:
         click.echo(f"Silero VAD model not available: {exc}", err=True)
@@ -155,6 +180,7 @@ def main(
             language=language,
             output_dir=output_dir,
             concurrency=concurrency,
+            merge_same_speaker=merge_same_speaker,
         )
     )
 
@@ -180,6 +206,7 @@ async def _run_all(
     language: str,
     output_dir: Path | None,
     concurrency: int,
+    merge_same_speaker: bool,
 ) -> list[SessionResult]:
     """Drive `transcribe_session()` for each discovered session.
 
@@ -203,6 +230,7 @@ async def _run_all(
                 language=language,
                 output_dir=out,
                 concurrency=concurrency,
+                merge_same_speaker=merge_same_speaker,
             )
             results.append(result)
         return results

@@ -104,6 +104,14 @@ machine:
 Each segment is then padded by `speech_pad_ms` on both sides (clamped to
 buffer bounds) and returned as `(start_s, end_s)` tuples in seconds.
 
+Segments longer than `max_speech_s` (default 60 s) are first split at
+the lowest-probability frame in the last `split_search_s` seconds
+(default 5 s) before the cap. If a segment is so short that the search
+window collapses, a hard cut at the cap boundary is used. Finally,
+padded edges of adjacent capped segments are clamped to the midpoint of
+any overlap so each participant's WAV uploads are disjoint — preventing
+duplicate words from reaching the assembled transcript.
+
 ### 6. Segment slicing
 
 Each speech segment is sliced out of the participant's PCM buffer with
@@ -135,6 +143,13 @@ absolute start time (`offset + segment_start`) and written:
   HH:MM:SS.ss <Speaker>
   <text>
   ```
+
+Before writing, the merged segment list is sorted with the
+deterministic key `(round(start, 3), round(end, 3), speaker)`. By
+default the pipeline then collapses runs of consecutive same-speaker
+segments into one block — the gap between merged blocks is
+unconstrained; only an interleaved different speaker breaks a run. Use
+`--no-merge-same-speaker` to retain one block per VAD segment.
 
 Overlapping speech renders naturally as consecutive blocks sharing (or
 near-sharing) a timestamp.

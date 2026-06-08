@@ -79,7 +79,8 @@ I jump forward!
 ```
 
 Segments are sorted by absolute start time; overlapping speech renders as
-adjacent blocks with the same timestamp.
+adjacent blocks with the same timestamp. Consecutive same-speaker segments
+are merged into one block by default — disable with `--no-merge-same-speaker`.
 
 ### `transcript.json`
 
@@ -165,6 +166,8 @@ already set in the environment.
 | `--vad-threshold`        | `TRANSCRIBE_VAD_THRESHOLD` | `0.5`                              |
 | `--vad-min-speech-ms`    |                            | `250`                              |
 | `--vad-min-silence-ms`   |                            | `500`                              |
+| `--max-segment-s`        | `TRANSCRIBE_MAX_SEGMENT_S`     | `60.0`                             |
+| `--merge-same-speaker / --no-merge-same-speaker` | `TRANSCRIBE_MERGE_SAME_SPEAKER` | `--merge-same-speaker` |
 | `--concurrency`          |                            | `4`                                |
 | `--timeout`              |                            | `300.0`                            |
 | `--log-level`            | `LOG_LEVEL`                | `INFO`                             |

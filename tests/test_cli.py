@@ -158,30 +158,101 @@ class TestCLI(unittest.TestCase):
         self.assertIn("[OK] s1", result.output)
         self.assertIn("[FAIL (boom)] s2", result.output)
 
-    def test_env_var_substitution(self):
+    def test_max_segment_s_flag_reaches_vad(self):
+        captured: dict = {}
+
+        class CapturingVAD:
+            def __init__(self, *args, **kwargs):
+                captured.update(kwargs)
+
         async def fake_transcribe(session_dir, **kwargs):
             return SessionResult(
-                session_id=session_dir.name,
-                ok=True,
-                num_segments=0,
-                num_speakers=0,
-                output_dir=session_dir,
+                session_id=session_dir.name, ok=True,
+                num_segments=0, num_speakers=0, output_dir=session_dir,
             )
 
         with tempfile.TemporaryDirectory() as td:
             session = _write_session(Path(td), "s1")
-            with patch.object(cli_mod, "SileroVAD", FakeVAD), patch.object(
-                cli_mod, "transcribe_session", side_effect=fake_transcribe
-            ):
+            with patch.object(cli_mod, "SileroVAD", CapturingVAD), \
+                 patch.object(
+                     cli_mod, "transcribe_session",
+                     side_effect=fake_transcribe,
+                 ):
+                result = self.runner.invoke(
+                    cli_mod.main,
+                    [
+                        str(session),
+                        "--api-url", "http://x",
+                        "--model", "m",
+                        "--max-segment-s", "45",
+                    ],
+                )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertEqual(captured.get("max_speech_s"), 45.0)
+
+    def test_no_merge_same_speaker_flag_passed_to_pipeline(self):
+        captured: dict = {}
+
+        async def fake_transcribe(session_dir, **kwargs):
+            captured.update(kwargs)
+            return SessionResult(
+                session_id=session_dir.name, ok=True,
+                num_segments=0, num_speakers=0, output_dir=session_dir,
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            session = _write_session(Path(td), "s1")
+            with patch.object(cli_mod, "SileroVAD", FakeVAD), \
+                 patch.object(
+                     cli_mod, "transcribe_session",
+                     side_effect=fake_transcribe,
+                 ):
+                result = self.runner.invoke(
+                    cli_mod.main,
+                    [
+                        str(session),
+                        "--api-url", "http://x",
+                        "--model", "m",
+                        "--no-merge-same-speaker",
+                    ],
+                )
+        self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertIs(captured.get("merge_same_speaker"), False)
+
+    def test_env_var_substitution(self):
+        captured: dict = {}
+
+        class CapturingVAD:
+            def __init__(self, *args, **kwargs):
+                captured.update(kwargs)
+
+        async def fake_transcribe(session_dir, **kwargs):
+            captured.update(kwargs)
+            return SessionResult(
+                session_id=session_dir.name, ok=True,
+                num_segments=0, num_speakers=0, output_dir=session_dir,
+            )
+
+        with tempfile.TemporaryDirectory() as td:
+            session = _write_session(Path(td), "s1")
+            with patch.object(cli_mod, "SileroVAD", CapturingVAD), \
+                 patch.object(
+                     cli_mod, "transcribe_session",
+                     side_effect=fake_transcribe,
+                 ):
                 result = self.runner.invoke(
                     cli_mod.main,
                     [str(session)],
                     env={
                         "TRANSCRIBE_URL": "http://from-env",
                         "TRANSCRIBE_MODEL": "env-model",
+                        "TRANSCRIBE_MAX_SEGMENT_S": "15",
+                        "TRANSCRIBE_MERGE_SAME_SPEAKER": "0",
                     },
                 )
         self.assertEqual(result.exit_code, 0, msg=result.output)
+        self.assertEqual(captured.get("max_speech_s"), 15.0)
+        self.assertIs(captured.get("merge_same_speaker"), False)
 
 
 class TestResolveSileroPath(unittest.TestCase):

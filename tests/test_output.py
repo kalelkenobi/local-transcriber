@@ -113,5 +113,87 @@ class TestWriteTxt(unittest.TestCase):
             self.assertEqual(path.read_text(), "")
 
 
+class TestMergeSameSpeakerSegments(unittest.TestCase):
+    def test_empty(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        self.assertEqual(merge_same_speaker_segments([]), [])
+
+    def test_single(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        seg = TranscriptSegment("A", 0.0, 1.0, "hi")
+        self.assertEqual(merge_same_speaker_segments([seg]), [seg])
+
+    def test_three_in_a_row_merge(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("V", 8.03, 22.0, "Perché oggi..."),
+            TranscriptSegment("V", 24.83, 25.5, "Ma che lo sarà?"),
+            TranscriptSegment("V", 26.50, 30.0, "45 secondi..."),
+        ]
+        merged = merge_same_speaker_segments(segs)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0].speaker, "V")
+        self.assertEqual(merged[0].start, 8.03)
+        self.assertEqual(merged[0].end, 30.0)
+        self.assertEqual(
+            merged[0].text,
+            "Perché oggi... Ma che lo sarà? 45 secondi...",
+        )
+
+    def test_speaker_interleave_breaks_run(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("A", 0.0, 1.0, "one"),
+            TranscriptSegment("B", 1.0, 2.0, "two"),
+            TranscriptSegment("A", 2.0, 3.0, "three"),
+        ]
+        self.assertEqual(merge_same_speaker_segments(segs), segs)
+
+    def test_run_resumes_after_other_speaker(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("A", 0.0, 1.0, "one"),
+            TranscriptSegment("A", 1.5, 2.0, "two"),
+            TranscriptSegment("B", 2.5, 3.0, "x"),
+            TranscriptSegment("A", 3.5, 4.0, "three"),
+        ]
+        merged = merge_same_speaker_segments(segs)
+        self.assertEqual(len(merged), 3)
+        self.assertEqual(merged[0].text, "one two")
+        self.assertEqual(merged[0].end, 2.0)
+        self.assertEqual(merged[1].speaker, "B")
+        self.assertEqual(merged[2].text, "three")
+
+    def test_whitespace_normalized(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("A", 0.0, 1.0, "  hello  "),
+            TranscriptSegment("A", 1.0, 2.0, "  world  "),
+        ]
+        merged = merge_same_speaker_segments(segs)
+        self.assertEqual(merged[0].text, "hello world")
+
+    def test_empty_text_dropped(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("A", 0.0, 1.0, "hello"),
+            TranscriptSegment("A", 1.0, 2.0, "   "),
+            TranscriptSegment("A", 2.0, 3.0, "world"),
+        ]
+        merged = merge_same_speaker_segments(segs)
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged[0].text, "hello world")
+
+    def test_input_not_mutated(self):
+        from local_transcriber.output import merge_same_speaker_segments
+        segs = [
+            TranscriptSegment("A", 0.0, 1.0, "hi"),
+            TranscriptSegment("A", 1.0, 2.0, "there"),
+        ]
+        snapshot = list(segs)
+        _ = merge_same_speaker_segments(segs)
+        self.assertEqual(segs, snapshot)
+
+
 if __name__ == "__main__":
     unittest.main()

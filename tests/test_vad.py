@@ -98,6 +98,66 @@ class TestStateMachine(unittest.TestCase):
         unpadded_start = 10 * 512 / 16000
         self.assertLess(result[0][0], unpadded_start)
 
+    def test_long_segment_is_split_at_lowest_prob_within_search_window(self):
+        vad = SileroVAD(
+            SILERO_PATH,
+            threshold=0.5,
+            min_speech_ms=250,
+            min_silence_ms=500,
+            speech_pad_ms=0,
+            max_speech_s=1.0,      # 1 s ≈ 31 frames
+            split_search_s=0.25,   # 0.25 s ≈ 8 frames
+        )
+        # 60-frame block of speech with a deliberate dip at frame 28
+        # (inside [target - 8, target] for target = 31).
+        probs = [0.9] * 60
+        probs[28] = 0.6  # still above threshold but lowest in window
+        result = vad._probs_to_segments(np.array(probs, dtype=np.float32))
+        self.assertGreaterEqual(len(result), 2)
+        first_end_s = result[0][1]
+        self.assertAlmostEqual(first_end_s, 28 * 512 / 16000, places=3)
+
+    def test_split_falls_back_to_hard_cut_when_window_empty(self):
+        vad = SileroVAD(
+            SILERO_PATH,
+            threshold=0.5,
+            min_speech_ms=250,
+            min_silence_ms=500,
+            speech_pad_ms=0,
+            max_speech_s=0.064,   # 2 frames
+            split_search_s=0.064,  # 2 frames
+        )
+        probs = np.array([0.9] * 8, dtype=np.float32)
+        result = vad._probs_to_segments(probs)
+        cap_s = 2 * 512 / 16000
+        for start_s, end_s in result:
+            self.assertLessEqual(end_s - start_s, cap_s + 1e-6)
+
+    def test_padding_clamped_to_midpoint_when_segments_would_overlap(self):
+        # Use a large pad so padded edges overlap.
+        vad = SileroVAD(
+            SILERO_PATH,
+            threshold=0.5,
+            min_speech_ms=250,
+            min_silence_ms=500,
+            speech_pad_ms=300,  # ~9 frames > half of 16-frame gap
+        )
+        probs = np.array(
+            [0.9] * 20 + [0.0] * 16 + [0.9] * 20,
+            dtype=np.float32,
+        )
+        result = vad._probs_to_segments(probs)
+        self.assertEqual(len(result), 2)
+        self.assertLessEqual(result[0][1], result[1][0])
+
+    def test_invalid_max_speech_s_raises(self):
+        with self.assertRaises(ValueError):
+            SileroVAD(SILERO_PATH, max_speech_s=0)
+        with self.assertRaises(ValueError):
+            SileroVAD(SILERO_PATH, max_speech_s=1.0, split_search_s=0)
+        with self.assertRaises(ValueError):
+            SileroVAD(SILERO_PATH, max_speech_s=1.0, split_search_s=2.0)
+
 
 @unittest.skipUnless(SILERO_PATH.exists(), "Silero VAD ONNX model not present")
 class TestEndToEnd(unittest.TestCase):

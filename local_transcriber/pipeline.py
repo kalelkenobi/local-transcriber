@@ -18,6 +18,7 @@ from .audio import decode_to_pcm16_mono, pcm_slice_to_wav_bytes
 from .backend import RemoteASRBackend
 from .output import (
     TranscriptSegment,
+    merge_same_speaker_segments,
     write_transcript_json,
     write_transcript_txt,
 )
@@ -58,12 +59,17 @@ async def transcribe_session(
     language: str,
     output_dir: Path | None = None,
     concurrency: int = 4,
+    merge_same_speaker: bool = True,
 ) -> SessionResult:
     """Transcribe one session directory and return a SessionResult.
 
     On any error before the ASR phase the result is `ok=False` with an
     `error` description. Individual segment failures during ASR are
     logged but do not fail the session.
+
+    Segments are sorted globally by (start, end, speaker). When
+    ``merge_same_speaker`` is True (default), consecutive same-speaker
+    blocks are collapsed into one line.
     """
     out_dir = output_dir or session_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -155,7 +161,11 @@ async def transcribe_session(
             error="all segments empty",
         )
 
-    transcribed.sort(key=lambda s: (s.start, s.speaker))
+    transcribed.sort(
+        key=lambda s: (round(s.start, 3), round(s.end, 3), s.speaker)
+    )
+    if merge_same_speaker:
+        transcribed = merge_same_speaker_segments(transcribed)
 
     write_transcript_json(
         out_dir / "transcript.json",
